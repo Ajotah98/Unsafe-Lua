@@ -1,5 +1,5 @@
 # Unsafe-Lua
-### NOTE: This project is not working as expected, as it realies on the GC of Lua. It need some changes to work properly as a manual memory management for Lua
+### NOTE: This project is not working as expected, as it relies on the GC of Lua. It need some changes to work properly as a manual memory management for Lua
 
 Unsafe-Lua is a Lua C library that provides low-level memory management capabilities directly accessible from Lua scripts. It allows for manual allocation, deallocation, and manipulation of memory, making it particularly useful for scenarios where performance and control over memory are critical.
 
