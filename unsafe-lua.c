@@ -2,7 +2,7 @@
 #define UNSAFE_REGISTRY_KEY "unsafe_registry"
 
 static int store_persistent_reference(lua_State *L, void *ptr) {
-    // Crear tabla de referencias si no existe
+    // Create references table
     lua_pushstring(L, UNSAFE_REGISTRY_KEY);
     lua_rawget(L, LUA_REGISTRYINDEX);
     if (lua_isnil(L, -1)) {
@@ -13,28 +13,22 @@ static int store_persistent_reference(lua_State *L, void *ptr) {
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
     
-    // Almacenar el userdata en la tabla
+    // Store the userdata
     lua_pushlightuserdata(L, ptr);
-    lua_pushvalue(L, -3);  // Copiar el userdata
+    lua_pushvalue(L, -3);  // Copy the userdata
     lua_rawset(L, -3);
-    lua_pop(L, 1);  // Eliminar la tabla de referencias
+    lua_pop(L, 1);  // Erase the references tables
     
     return 1;
 }
 
 
-
-
-
-
-
-
-// Estructuras internas
 typedef struct {
     void *base;
     size_t size;
     size_t offset;
 } MemoryBlock;
+
 
 // *** Heap ***
 int unsafe_heap_malloc(lua_State *L) {
@@ -45,15 +39,12 @@ int unsafe_heap_malloc(lua_State *L) {
         return luaL_error(L, "malloc failed");
     }
     
-    // Crear userdata para mantener los metametodos
+    // Create a userdata to store metamethods
     void **udata = lua_newuserdata(L, sizeof(void *));
     *udata = ptr;
-    
-    // Asignar metatable
     luaL_getmetatable(L, "Pointer");
     lua_setmetatable(L, -2);
     
-    // Almacenar referencia persistente
     return store_persistent_reference(L, ptr);
 }
 
@@ -63,15 +54,14 @@ int unsafe_heap_free(lua_State *L) {
         return luaL_error(L, "Attempt to free a NULL pointer");
     }
     
-    // Eliminar referencia en la tabla persistente
+    // Erase the reference
     lua_pushstring(L, UNSAFE_REGISTRY_KEY);
     lua_rawget(L, LUA_REGISTRYINDEX);
     lua_pushlightuserdata(L, *udata);
-    lua_pushnil(L); // Eliminar la referencia
+    lua_pushnil(L);
     lua_rawset(L, -3);
     lua_pop(L, 1);
 
-    // Liberar memoria y marcar el puntero como NULL
     free(*udata);
     *udata = NULL;
 
@@ -84,7 +74,7 @@ typedef struct {
     MemoryBlock memory;
 } Arena;
 
-// Similar para Arena y Stack
+
 int unsafe_arena_new(lua_State *L) {
     size_t size = luaL_checkinteger(L, 1);
     
@@ -112,7 +102,6 @@ int unsafe_arena_alloc(lua_State *L) {
     void *ptr = (char *)arena->memory.base + arena->memory.offset;
     arena->memory.offset += size;
 
-    // Crear userdata para el puntero asignado
     void **ptr_userdata = lua_newuserdata(L, sizeof(void *));
     *ptr_userdata = ptr;
 
@@ -145,10 +134,8 @@ typedef struct {
 int unsafe_stack_new(lua_State *L) {
     size_t size = luaL_checkinteger(L, 1);
 
-    // Crear userdata para el stack
     Stack *stack = lua_newuserdata(L, sizeof(Stack));
 
-    // Inicializar el stack
     stack->memory.base = malloc(size);
     stack->memory.size = size;
     stack->memory.offset = 0;
@@ -251,17 +238,15 @@ static const luaL_Reg pointer_methods[] = {
 };
 
 int luaopen_unsafe(lua_State *L) {
-    // Crear y registrar la metatable para Pointer primero
+    // Create first the Pointer metatable
     luaL_newmetatable(L, "Pointer");
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     luaL_setfuncs(L, pointer_methods, 0);
-    lua_pop(L, 1);  // Eliminar la metatable del stack
+    lua_pop(L, 1);
     
-    // Crear la tabla principal del módulo
     lua_newtable(L);
     
-    // Registrar todas las funciones en la tabla principal
     luaL_setfuncs(L, unsafe_functions, 0);
     
     return 1;
